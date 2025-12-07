@@ -30,22 +30,25 @@ This repository reflects a production-style architecture where the model, traini
 
 ## Architecture Diagram
 
+```markdown
+## Architecture Diagram
+
 ```mermaid
 flowchart TD
 
-A[Dataset (CSV)] --> B[TrainModel Class]
-B --> C[Preprocessing + Feature Engineering]
-C --> D[Train Random Forest Model]
-D --> E[Model Artifact (.joblib)]
-E --> F[Upload to S3]
+    A[Dataset (CSV)] --> B[TrainModel Class]
+    B --> C[Preprocessing + Feature Engineering]
+    C --> D[Train Random Forest Model]
+    D --> E[Model Artifact (.joblib)]
+    E --> F[Upload to S3]
 
-E --> G[InferenceModel Class]
-G --> H[FastAPI Application]
+    E --> G[InferenceModel Class]
+    G --> H[FastAPI Application]
 
-H --> I[Docker Container]
-I --> J[ECR Repository]
-J --> K[ECS Fargate Task]
-K --> L[Public API via Load Balancer]
+    H --> I[Docker Container]
+    I --> J[ECR Repository]
+    J --> K[ECS Fargate Task]
+    K --> L[Public API via Load Balancer]
 
 ## Directory Structure
 

@@ -430,12 +430,22 @@ Add file → Upload files
 
 ### Step 3: Display Screenshots in README
 
-Use the following Markdown syntax:
+### Deployment Screenshots
 
-![ECS Cluster](docs/images/ecs-cluster.png)
-![ECS Service](docs/images/ecs-service.png)
-![ECS Task](docs/images/ecs-task.png)
-![Application Load Balancer](docs/images/alb.png)
+#### ECS Service Creation
+![ECS Create Service](docs/images/ecs-create-service.png)
+
+#### ECS Service Active & Running Tasks
+![ECS Service Active](docs/images/ecs-service-active.png)
+
+#### ECS Load Balancer and Target Health
+![ECS Service Health](docs/images/ecs-service-health.png)
+
+#### S3 Bucket Storing Model Artifact
+![S3 Model Bucket](docs/images/s3-bucket-model.png)
+
+#### ALB Health Check Endpoint
+![ALB Health Check](docs/images/alb-health-check.png)
 
 Once uploaded, your screenshots will automatically appear in the README in the AWS deployment section.
 

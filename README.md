@@ -1,63 +1,43 @@
-ML Model Deployment: Course Completion Prediction (FastAPI, Docker, AWS)
-Overview
+# ML Model Deployment: Course Completion Prediction (FastAPI, Docker, AWS)
 
-This project implements an end-to-end machine learning system for predicting whether a student will complete an online course.
-It includes a full workflow covering:
+## Overview
 
-Dataset preprocessing
+This project implements an end-to-end machine learning system that predicts whether a student will complete an online course.  
+It demonstrates a complete ML Engineering and MLOps workflow, including:
 
-Model training using a Random Forest classifier
+- Data preprocessing  
+- Model training using a Random Forest classifier  
+- Model artifact storage in AWS S3  
+- Inference pipeline with consistent preprocessing  
+- REST API deployment using FastAPI  
+- Docker containerization  
+- Cloud deployment using AWS ECR and ECS Fargate  
+- Automated testing using Pytest  
 
-Model serialization
+This repository reflects a production-style architecture where the model, training pipeline, inference logic, and deployment stack are fully separated and modular.
 
-Model storage on AWS S3
+## Features
 
-Inference pipeline using a custom inference class
+- Class-based training pipeline (`TrainModel`) with preprocessing, model training, evaluation, and artifact saving  
+- Inference pipeline (`InferenceModel`) that loads the trained model and performs consistent preprocessing  
+- FastAPI application exposing prediction endpoints with automatic Swagger documentation  
+- Dockerfile and Docker Compose support for containerized API deployment  
+- AWS ECR integration for container image storage  
+- AWS ECS Fargate deployment workflow for scalable cloud hosting  
+- S3 integration for storing trained model artifacts  
+- Comprehensive unit tests using Pytest (training, inference, API)  
+- Structured, maintainable folder layout suitable for real-world ML projects
 
-FastAPI application for serving predictions
+## Architecture Diagram
 
-Dockerization for containerized deployment
-
-Deployment on AWS ECS (Fargate) with ECR
-
-Unit tests using Pytest
-
-The project is structured for real-world MLOps workflows and demonstrates how to deploy ML models as scalable API services.
-
-Features
-
-Training pipeline implemented as a class (TrainModel)
-
-Inference pipeline implemented as a class (InferenceModel)
-
-FastAPI-based REST API with endpoints:
-
-/health
-
-/predict
-
-/predict_batch
-
-Fully containerized with Docker
-
-Production deployment on AWS ECS via ECR container images
-
-Model artifact stored on AWS S3
-
-Automated preprocessing built into the inference pipeline
-
-Unit testing using Pytest
-
-Clear directory structure for maintainability
-
-Project Architecture
+```mermaid
 flowchart TD
 
-A[Dataset: CSV File] --> B[TrainModel Class]
+A[Dataset (CSV)] --> B[TrainModel Class]
 B --> C[Preprocessing + Feature Engineering]
-C --> D[Random Forest Training]
+C --> D[Train Random Forest Model]
 D --> E[Model Artifact (.joblib)]
-E --> F[S3 Model Storage]
+E --> F[Upload to S3]
 
 E --> G[InferenceModel Class]
 G --> H[FastAPI Application]
@@ -67,204 +47,401 @@ I --> J[ECR Repository]
 J --> K[ECS Fargate Task]
 K --> L[Public API via Load Balancer]
 
-Repository Structure
-online-course-completion/
- ├── app/
- │    ├── __init__.py
- │    └── main.py
- ├── data/
- │    └── online_course_data.csv
- ├── docs/
- │    └── images/         (place your ECS screenshots here)
- ├── models/
- │    └── random_forest_pipeline.joblib
- ├── tests/
- │    ├── conftest.py
- │    ├── test_api.py
- │    ├── test_inference.py
- │    └── test_training.py
- ├── Dockerfile
- ├── docker-compose.yml
- ├── inference.py
- ├── train_model.py
- ├── requirements.txt
- ├── requirements-api.txt
- ├── pyproject.toml
- ├── poetry.lock
- └── README.md
+## Directory Structure
 
-Setup Instructions
-1. Install Dependencies (Using Poetry)
+    online-course-completion/
+     ├── app/
+     │    ├── __init__.py
+     │    └── main.py
+     ├── data/
+     │    └── online_course_data.csv
+     ├── docs/
+     │    └── images/        # Upload ECS deployment screenshots
+     ├── models/
+     │    └── random_forest_pipeline.joblib
+     ├── tests/
+     │    ├── conftest.py
+     │    ├── test_api.py
+     │    ├── test_inference.py
+     │    └── test_training.py
+     ├── Dockerfile
+     ├── docker-compose.yml
+     ├── inference.py
+     ├── train_model.py
+     ├── requirements.txt
+     ├── requirements-api.txt
+     ├── pyproject.toml
+     ├── poetry.lock
+     └── README.md
+
+## Environment Setup
+
+### Install Dependencies (Poetry)
+
+Install all project dependencies:
+
 poetry install
 
-2. Activate Poetry Environment
+
+### Activate the Virtual Environment
+
+Activate the Poetry environment so all Python commands use correct dependencies:
+
 poetry shell
 
-Training the Model
+You are now ready to run training, inference, tests, or the FastAPI application inside 
 
-The training pipeline reads the dataset, applies preprocessing, trains a Random Forest model, evaluates it, and saves the model artifact.
+## Training the Model
 
-To run:
+The project uses a class-based training pipeline implemented in `TrainModel` inside `train_model.py`.  
+Training performs:
+
+- Reading the dataset  
+- Splitting into train/test sets  
+- Preprocessing numeric and categorical features  
+- Training a Random Forest classifier  
+- Evaluating the model  
+- Saving the trained model locally  
+- Uploading the model artifact to AWS S3 (optional)
+
+### Run the Training Script
 
 poetry run python train_model.py
 
-S3 Model Upload
 
-The training script also supports uploading the trained model to S3 using:
+After running, the trained model is saved at:
 
+
+
+models/random_forest_pipeline.joblib
+
+
+### Uploading Model to S3
+
+The training script contains a helper method to upload the trained model to your S3 bucket:
+
+```python
 trainer.upload_model_to_s3(
     model_path=model_path,
-    bucket_name="your-bucket-name",
+    bucket_name="course-completion-models-<your initials>",
     object_name="random_forest_pipeline.joblib"
 )
 
 
-Your S3 bucket structure:
+Model artifacts stored in S3 allow versioning, remote access, and integration into cloud inference workflows.
 
-s3://course-completion-models-<your initials>/random_forest_pipeline.joblib
+## Inference Pipeline
 
-Inference Pipeline
+Inference is handled by the `InferenceModel` class in `inference.py`.  
+This class ensures the same preprocessing used during training is consistently applied during prediction.
 
-InferenceModel automatically:
+### Key Responsibilities
 
-Loads the saved model pipeline
+- Load the trained model pipeline  
+- Validate and preprocess incoming feature data  
+- Predict class label (0 or 1)  
+- Return prediction probability  
 
-Performs preprocessing identical to training
+### Example Usage
 
-Produces predictions + probabilities
-
-Example usage:
+```python
+from inference import InferenceModel
 
 model = InferenceModel()
-result = model.predict_one(sample_features)
 
-Running the FastAPI Application
-
-Start the API locally:
-
-poetry run uvicorn app.main:app --reload
-
-
-Now open:
-
-Swagger UI: http://localhost:8000/docs
-
-Health check: http://localhost:8000/health
-
-API Endpoints
-POST /predict
-
-Input example:
-
-{
-  "age": 25,
-  "hours_per_week": 5,
-  "num_logins_last_month": 10,
-  "assignments_submitted": 3,
-  "discussion_posts": 2,
-  "num_siblings": 1,
-  "continent": "Asia",
-  "education_level": "Bachelors",
-  "preferred_device": "Mobile",
-  "has_pet": 1,
-  "is_working_professional": 0,
-  "videos_watched_pct": 80
+sample = {
+    "age": 25,
+    "hours_per_week": 5,
+    "num_logins_last_month": 10,
+    "assignments_submitted": 3,
+    "discussion_posts": 2,
+    "num_siblings": 1,
+    "continent": "Asia",
+    "education_level": "Bachelors",
+    "preferred_device": "Mobile",
+    "has_pet": 1,
+    "is_working_professional": 0,
+    "videos_watched_pct": 80
 }
 
-Docker Usage
-Build Image
+result = model.predict_one(sample)
+print(result)
+
+Output example:
+
+{
+  "prediction": 1,
+  "probability": 0.82
+}
+
+## Running the FastAPI Application
+
+The API is implemented in `app/main.py` and wraps the `InferenceModel` to provide prediction endpoints.
+
+### Start the API Locally
+
+Run the following command:
+poetry run uvicorn app.main:app --reload
+
+This inference pipeline is also integrated directly into the FastAPI application for serving real-time predictions.
+
+
+### Available Endpoints
+
+#### GET /health
+Used to verify the service is running.
+
+#### GET /docs
+Opens the automatically generated Swagger UI.
+
+#### POST /predict
+Accepts a single student's feature values and returns a prediction.
+
+#### POST /predict_batch
+Accepts multiple records for batch prediction.
+
+### Sample /predict Request
+
+```json
+{
+  "age": 22,
+  "hours_per_week": 6,
+  "num_logins_last_month": 15,
+  "assignments_submitted": 4,
+  "discussion_posts": 3,
+  "num_siblings": 2,
+  "continent": "Asia",
+  "education_level": "Bachelors",
+  "preferred_device": "Laptop",
+  "has_pet": 0,
+  "is_working_professional": 1,
+  "videos_watched_pct": 70
+}
+
+Running the FastAPI server locally allows easy testing before packaging the application into a Docker container.
+
+## Docker Usage
+
+The project includes a Dockerfile and a docker-compose configuration to containerize the FastAPI inference service.
+
+### Build the Docker Image
+
+Run the following:
+
 docker build -t course-completion-api .
 
-Run with Docker Compose
+
+This creates a production-ready image containing:
+
+- FastAPI application  
+- Inference pipeline  
+- Python environment and dependencies  
+
+### Run the Service Using Docker Compose
+
 docker-compose up
 
-Access API
+This starts the API inside a container and exposes it on port 8000.
+
+### Access the API
+
+After the container is running, open:
 
 http://localhost:8000/docs
 
-AWS Deployment Summary (ECR + ECS Fargate)
-1. Push Image to ECR
-aws ecr get-login-password --region ap-south-1 \
-| docker login --username AWS --password-stdin <your ECR URI>
+The Swagger documentation will allow testing prediction endpoints interactively.
+
+Containerization ensures the application runs consistently across any machine or cloud environme
+
+## AWS Deployment (ECR + ECS Fargate)
+
+This project was deployed to AWS using a production-grade architecture involving:
+
+- Amazon ECR for storing the Docker image  
+- Amazon ECS (Fargate) for serverless container hosting  
+- Application Load Balancer for public API access  
+- IAM roles for secure permissions  
+- CloudWatch for logs and monitoring  
+
+### Step 1: Push Docker Image to ECR
+
+Authenticate Docker to ECR:
+
+aws ecr get-login-password --region ap-south-1
+| docker login --username AWS --password-stdin <ECR_URI>
+
+Build and tag the image:
 
 docker build -t course-completion-api .
 docker tag course-completion-api:latest <ECR_URI>:latest
+
+Push to ECR:
+
 docker push <ECR_URI>:latest
 
-2. ECS Fargate Deployment Steps
 
-Create ECS Cluster
+### Step 2: Deploy Using ECS Fargate
 
-Create Task Definition (Fargate)
+The deployment included:
 
-Add container using ECR image
+- Creating an ECS Cluster  
+- Registering a Task Definition  
+- Adding the container from ECR  
+- Exposing port 8000  
+- Creating a Service that maintains the container  
+- Attaching an Application Load Balancer  
+- Setting health check endpoint to `/health`  
+- Testing the publicly accessible API via the ALB DNS name  
 
-Set container port to 8000
+### Deployment Screenshots
 
-Create ECS Service
-
-Create Application Load Balancer
-
-Add Target Group and health check at /health
-
-Deploy and access API via ALB DNS
-
-Deployment Screenshot Placeholders
-
-Upload your ECS screenshots to:
+Upload your deployment images to:
 
 docs/images/
 
+Then reference them in the README:
 
-Then reference them like this:
+Once images are uploaded, they will be displayed automatically in this section.
 
-![ECS Cluster](docs/images/ecs-cluster.png)
-![ECS Service](docs/images/ecs-service.png)
-![ALB](docs/images/alb.png)
+## Running Unit Tests
 
+This project includes Pytest-based unit tests to ensure reliability of:
 
-Replace filenames with your actual uploaded names.
+- The training pipeline  
+- The inference pipeline  
+- The FastAPI application  
 
-Running Unit Tests
+All tests are located in the `tests/` directory.
+
+### Run All Tests
+
 pytest
 
+### Test Coverage
 
-Covers:
+1. **test_training.py**  
+   - Verifies that the training pipeline runs successfully  
+   - Ensures the model file is created  
 
-Training pipeline tests
+2. **test_inference.py**  
+   - Checks that the inference model loads correctly  
+   - Validates prediction output format  
 
-Inference pipeline tests
+3. **test_api.py**  
+   - Tests `/health` endpoint  
+   - Tests `/predict` and `/predict_batch` endpoints  
+   - Ensures API responds with correct structure and status codes  
 
-FastAPI endpoint tests
+Tests help ensure consistency across updates and deployments.
 
-Future Improvements
+## Future Improvements
 
-Load model dynamically from S3 during inference
+Several enhancements can be added to evolve this project into a full production-grade MLOps system:
 
-Add CI/CD (GitHub Actions)
+### 1. Load Model Directly from S3 During Inference
+Instead of loading the model from the local `models/` directory, the inference service can:
 
-Add model monitoring and drift detection
+- Download the latest model from S3 at startup  
+- Cache it locally  
+- Allow automatic model updates without redeployment  
 
-Implement automatic retraining pipeline
+This enables rapid iteration and real-time model versioning.
 
-Add feature importance dashboards
+### 2. Automated Model Retraining
+A retraining pipeline can be scheduled using:
 
-Uploading ECS Screenshots to GitHub
+- AWS Lambda  
+- AWS Step Functions  
+- CloudWatch EventBridge  
 
-Go to your GitHub repo
+Triggered by data drift or periodic intervals.
 
-Navigate to:
+### 3. Model Drift and Data Drift Monitoring
+Production systems typically monitor:
+
+- Statistical drift in input features  
+- Decrease in prediction accuracy  
+- Change in data distributions  
+
+Tools like Evidently AI or AWS SageMaker Model Monitor can be integrated.
+
+### 4. CI/CD Pipeline
+Add GitHub Actions for:
+
+- Automated testing  
+- Docker image builds  
+- Deployment triggers  
+
+Ensures reproducibility and stable updates.
+
+### 5. Feature Importance and Explainability
+Generate:
+
+- SHAP values  
+- Feature importances  
+- Model interpretability dashboards  
+
+Useful for debugging and presenting insights.
+
+### 6. Frontend Dashboard
+Optional UI to:
+
+- Submit prediction inputs  
+- Display completion probability  
+- Visualize student risk levels  
+
+### 7. Logging and Monitoring Enhancements
+Extend:
+
+- Structured logging  
+- API performance metrics  
+- Error tracking  
+
+to improve observability in production.
+
+These improvements can evolve the project into a full-scale production-ready ML platform.
+
+## How to Upload Deployment Screenshots
+
+To document your AWS deployment (ECR, ECS, Load Balancer, Tasks), you can upload screenshots and reference them inside this README.
+
+### Step 1: Prepare Your Images
+
+Name your screenshots clearly, for example:
+
+ecs-cluster.png
+ecs-service.png
+ecs-task.png
+alb.png
+
+
+### Step 2: Upload to GitHub
+
+1. Open your GitHub repository in the browser  
+2. Navigate to the folder:
+
 docs/images/
 
-Click:
+
+3. Click:
 
 Add file → Upload files
 
-Select your ECS screenshots
 
-Commit changes
+4. Select your screenshots  
+5. Click **Commit changes**
 
-Then the images automatically appear in README if filenames match.
+### Step 3: Display Screenshots in README
+
+Use the following Markdown syntax:
+
+```markdown
+![ECS Cluster](docs/images/ecs-cluster.png)
+![ECS Service](docs/images/ecs-service.png)
+![ECS Task](docs/images/ecs-task.png)
+![Application Load Balancer](docs/images/alb.png)
+
+Once uploaded, your screenshots will automatically appear in the README in the AWS deployment section.
 
 ##  Author
 

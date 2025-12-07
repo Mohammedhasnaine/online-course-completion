@@ -30,9 +30,6 @@ This repository reflects a production-style architecture where the model, traini
 
 ## Architecture Diagram
 
-```markdown
-## Architecture Diagram
-
 flowchart TD
 
     A[Dataset (CSV)] --> B[TrainModel Class]

@@ -119,7 +119,6 @@ models/random_forest_pipeline.joblib
 
 The training script contains a helper method to upload the trained model to your S3 bucket:
 
-```python
 trainer.upload_model_to_s3(
     model_path=model_path,
     bucket_name="course-completion-models-<your initials>",
@@ -143,7 +142,6 @@ This class ensures the same preprocessing used during training is consistently a
 
 ### Example Usage
 
-```python
 from inference import InferenceModel
 
 model = InferenceModel()
@@ -201,7 +199,7 @@ Accepts multiple records for batch prediction.
 
 ### Sample /predict Request
 
-```json
+
 {
   "age": 22,
   "hours_per_week": 6,
@@ -434,7 +432,6 @@ Add file → Upload files
 
 Use the following Markdown syntax:
 
-```markdown
 ![ECS Cluster](docs/images/ecs-cluster.png)
 ![ECS Service](docs/images/ecs-service.png)
 ![ECS Task](docs/images/ecs-task.png)

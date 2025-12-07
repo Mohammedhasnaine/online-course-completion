@@ -1,116 +1,312 @@
 import argparse
-import os
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import List, Optional
+
 import joblib
+import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
+
+@dataclass
 class TrainModel:
-    def __init__(self, model_name, data_path="data/online_course_completion.csv", target_col="completed_course"):
-        self.model_name = model_name
-        self.data_path = data_path
-        self.target_col = target_col
-        self.data = None
-        self.model = None
+    """
+    Class to handle training of the course completion model.
 
-    def load_data(self):
-        print(f"📂 Loading data from {self.data_path}...")
-        self.data = pd.read_csv(self.data_path)
+    Responsibilities:
+    - Load data
+    - Apply preprocessing (drop columns, impute, encode, scale)
+    - Train a model (RandomForest)
+    - Evaluate on a validation split
+    - Save trained pipeline to the models/ directory
+    """
 
-        if self.target_col not in self.data.columns:
-            raise ValueError(f"Target column '{self.target_col}' not found in dataset.")
+    data_path: Path = Path("data/online_course_data.csv")
+    target_col: str = "completed_course"
+    model_dir: Path = Path("models")
+    model_filename: str = "random_forest_pipeline.joblib"
 
-        print("✅ Data loaded successfully!")
-        print(f"Shape: {self.data.shape}")
-        print(f"Columns: {list(self.data.columns)}")
+    test_size: float = 0.2
+    random_state: int = 42
 
-        # Print NaN summary
-        nan_counts = self.data.isna().sum()
-        if nan_counts.sum() > 0:
-            print("\n⚠️ Missing values detected:")
-            print(nan_counts[nan_counts > 0])
-        else:
-            print("\n✅ No missing values detected!")
+    # Internal fields (not passed from CLI)
+    df: Optional[pd.DataFrame] = field(default=None, init=False)
+    pipeline: Optional[Pipeline] = field(default=None, init=False)
+    X_train: Optional[pd.DataFrame] = field(default=None, init=False)
+    X_test: Optional[pd.DataFrame] = field(default=None, init=False)
+    y_train: Optional[pd.Series] = field(default=None, init=False)
+    y_test: Optional[pd.Series] = field(default=None, init=False)
 
-    def _build_model(self):
-        # Split numeric vs categorical features
-        numeric_features = self.data.select_dtypes(include=['int64', 'float64']).columns.tolist()
-        categorical_features = self.data.select_dtypes(include=['object']).columns.tolist()
+    def load_data(self) -> None:
+        """Load CSV data into a pandas DataFrame."""
+        print(f"[INFO] Loading data from: {self.data_path}")
+        if not self.data_path.exists():
+            raise FileNotFoundError(f"Data file not found: {self.data_path}")
 
-        if self.target_col in numeric_features:
-            numeric_features.remove(self.target_col)
-        if self.target_col in categorical_features:
-            categorical_features.remove(self.target_col)
+        self.df = pd.read_csv(self.data_path)
+        print(f"[INFO] Data loaded with shape: {self.df.shape}")
 
-        # Pipelines for numeric + categorical
-        numeric_transformer = Pipeline(steps=[
-            ('imputer', SimpleImputer(strategy='median')),
-            ('scaler', StandardScaler())
-        ])
+    def _prepare_features_and_target(self):
+        """Apply column drops and split into X (features) and y (target)."""
+        if self.df is None:
+            raise ValueError("Dataframe is not loaded. Call load_data() first.")
 
-        categorical_transformer = Pipeline(steps=[
-            ('imputer', SimpleImputer(strategy='most_frequent')),
-            ('onehot', OneHotEncoder(handle_unknown='ignore'))
-        ])
+        df = self.df.copy()
 
-        preprocessor = ColumnTransformer(
-            transformers=[
-                ('num', numeric_transformer, numeric_features),
-                ('cat', categorical_transformer, categorical_features)
+        # Columns to drop (from your README)
+        drop_cols: List[str] = [
+            "favorite_color",
+            "birth_month",
+            "height_cm",
+            "weight_kg",
+            "country",
+        ]
+
+        existing_drop_cols = [c for c in drop_cols if c in df.columns]
+        if existing_drop_cols:
+            print(f"[INFO] Dropping columns: {existing_drop_cols}")
+            df = df.drop(columns=existing_drop_cols)
+
+        if self.target_col not in df.columns:
+            raise ValueError(f"Target column '{self.target_col}' not found in data.")
+
+        y = df[self.target_col]
+        X = df.drop(columns=[self.target_col])
+
+        print(f"[INFO] Features shape: {X.shape}, Target shape: {y.shape}")
+        return X, y
+
+    def _build_pipeline(self, X: pd.DataFrame) -> Pipeline:
+        """
+        Build the preprocessing + model pipeline.
+
+        Categorical (One-Hot Encode):
+            - continent
+            - education_level
+            - preferred_device
+
+        Numerical (StandardScaler):
+            - age
+            - hours_per_week
+            - num_logins_last_month
+            - assignments_submitted
+            - discussion_posts
+            - num_siblings
+        """
+        # Only keep columns that actually exist in X (defensive coding)
+        categorical_cols = [
+            c for c in ["continent", "education_level", "preferred_device"]
+            if c in X.columns
+        ]
+
+        numeric_cols = [
+            c
+            for c in [
+                "age",
+                "hours_per_week",
+                "num_logins_last_month",
+                "assignments_submitted",
+                "discussion_posts",
+                "num_siblings",
+            ]
+            if c in X.columns
+        ]
+
+        print(f"[INFO] Categorical columns: {categorical_cols}")
+        print(f"[INFO] Numeric columns: {numeric_cols}")
+
+        # You may have other numeric/boolean columns (like is_working_professional, has_pet)
+        # Optionally add them as numeric if needed:
+        extra_numeric = [
+            col
+            for col in X.select_dtypes(include=["int64", "float64", "bool"]).columns
+            if col not in numeric_cols and col not in categorical_cols
+        ]
+        if extra_numeric:
+            print(f"[INFO] Treating additional numeric columns as numeric: {extra_numeric}")
+            numeric_cols = numeric_cols + extra_numeric
+
+        # Preprocessing for numerical data
+        numeric_transformer = Pipeline(
+            steps=[
+                ("imputer", SimpleImputer(strategy="median")),
+                ("scaler", StandardScaler()),
             ]
         )
 
-        # Choose model
-        if self.model_name == "logistic_regression":
-            model = LogisticRegression(max_iter=1000)
-        elif self.model_name == "random_forest":
-            model = RandomForestClassifier(n_estimators=100, random_state=42)
-        elif self.model_name == "xgboost":
-            from xgboost import XGBClassifier
-            model = XGBClassifier(use_label_encoder=False, eval_metric="logloss")
-        else:
-            raise ValueError(f"Unsupported model: {self.model_name}")
+        # Preprocessing for categorical data
+        categorical_transformer = Pipeline(
+            steps=[
+                ("imputer", SimpleImputer(strategy="most_frequent")),
+                (
+                    "onehot",
+                    OneHotEncoder(
+                        handle_unknown="ignore",
+                        sparse_output=False,
+                    ),
+                ),
+            ]
+        )
 
-        # Final pipeline
-        clf = Pipeline(steps=[('preprocessor', preprocessor),
-                             ('classifier', model)])
-        return clf
+        preprocessor = ColumnTransformer(
+            transformers=[
+                ("num", numeric_transformer, numeric_cols),
+                ("cat", categorical_transformer, categorical_cols),
+            ],
+            remainder="drop",  # drop any columns we didn't list
+        )
 
-    def train(self):
-        X = self.data.drop(columns=[self.target_col])
-        y = self.data[self.target_col]
+        # Model (using class_weight='balanced' to handle imbalance)
+        model = RandomForestClassifier(
+            n_estimators=200,
+            random_state=self.random_state,
+            class_weight="balanced",
+            n_jobs=-1,
+        )
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        pipeline = Pipeline(
+            steps=[
+                ("preprocessor", preprocessor),
+                ("model", model),
+            ]
+        )
 
-        print("⚡ Training model...")
-        clf = self._build_model()
-        clf.fit(X_train, y_train)
+        print("[INFO] Pipeline successfully built.")
+        return pipeline
 
-        score = clf.score(X_test, y_test)
-        print(f"✅ Model trained successfully! Accuracy: {score:.4f}")
+    def prepare_data_and_pipeline(self) -> None:
+        """Combine data prep, split, and pipeline building."""
+        X, y = self._prepare_features_and_target()
 
-        self.model = clf
+        # Train/validation split
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
+            X,
+            y,
+            test_size=self.test_size,
+            random_state=self.random_state,
+            stratify=y,
+        )
 
-    def save_model(self):
-        os.makedirs("models", exist_ok=True)
-        model_path = f"models/{self.model_name}.pkl"
-        joblib.dump(self.model, model_path)
-        print(f"💾 Model saved at {model_path}")
+        print(
+            f"[INFO] Train shape: {self.X_train.shape}, "
+            f"Test shape: {self.X_test.shape}"
+        )
+
+        # Build the pipeline using the training features
+        self.pipeline = self._build_pipeline(self.X_train)
+
+    def train(self) -> None:
+        """Fit the pipeline on the training data."""
+        if self.pipeline is None:
+            raise ValueError("Pipeline is not built. Call prepare_data_and_pipeline() first.")
+
+        print("[INFO] Training the model...")
+        self.pipeline.fit(self.X_train, self.y_train)
+        print("[INFO] Training completed.")
+
+    def evaluate(self) -> None:
+        """Evaluate the model on the test set and print metrics."""
+        if self.pipeline is None:
+            raise ValueError("Pipeline is not trained. Call train() first.")
+        print("[INFO] Evaluating the model on the test set...")
+        y_pred = self.pipeline.predict(self.X_test)
+
+        acc = accuracy_score(self.y_test, y_pred)
+        print(f"[METRIC] Accuracy: {acc:.4f}")
+        print("[METRIC] Classification report:")
+        print(classification_report(self.y_test, y_pred))
+
+    def save_model(self) -> Path:
+        """Save the trained pipeline to the models/ directory."""
+        if self.pipeline is None:
+            raise ValueError("Pipeline is not trained. Call train() first.")
+
+        self.model_dir.mkdir(parents=True, exist_ok=True)
+        model_path = self.model_dir / self.model_filename
+
+        joblib.dump(self.pipeline, model_path)
+        print(f"[INFO] Saved trained model to: {model_path.resolve()}")
+        return model_path
+
+    def upload_model_to_s3(self, model_path: Path, bucket_name: str, object_name: str):
+        import boto3
+
+        s3_client = boto3.client("s3")
+        s3_client.upload_file(str(model_path), bucket_name, object_name)
+
+        print(f"[INFO] Uploaded model to S3: s3://{bucket_name}/{object_name}")
+
+
+def parse_args():
+    """Parse CLI arguments for training."""
+    parser = argparse.ArgumentParser(
+        description="Train the Online Course Completion model and save it to models/."
+    )
+    parser.add_argument(
+        "--data-path",
+        type=str,
+        default="data/online_course_data.csv",
+        help="Path to the training CSV file.",
+    )
+    parser.add_argument(
+        "--model-dir",
+        type=str,
+        default="models",
+        help="Directory where the trained model will be saved.",
+    )
+    parser.add_argument(
+        "--model-filename",
+        type=str,
+        default="random_forest_pipeline.joblib",
+        help="Filename for the saved model.",
+    )
+    parser.add_argument(
+        "--test-size",
+        type=float,
+        default=0.2,
+        help="Proportion of data to use as test set.",
+    )
+    parser.add_argument(
+        "--random-state",
+        type=int,
+        default=42,
+        help="Random state for reproducibility.",
+    )
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+
+    trainer = TrainModel(
+        data_path=Path(args.data_path),
+        model_dir=Path(args.model_dir),
+        model_filename=args.model_filename,
+        test_size=args.test_size,
+        random_state=args.random_state,
+    )
+
+    # Step-by-step operations
+    trainer.load_data()
+    trainer.prepare_data_and_pipeline()
+    trainer.train()
+    trainer.evaluate()
+    model_path = trainer.save_model()     
+
+    trainer.upload_model_to_s3(           
+        model_path=model_path,
+        bucket_name="course-completion-models-mh",   # your bucket
+        object_name="random_forest_pipeline.joblib"
+    )
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train a model for course completion prediction")
-    parser.add_argument("--model", type=str, required=True,
-                        help="Model to train: logistic_regression | random_forest | xgboost")
-    args = parser.parse_args()
-
-    trainer = TrainModel(model_name=args.model)
-    trainer.load_data()
-    trainer.train()
-    trainer.save_model()
+    main()
 

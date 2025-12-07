@@ -1,0 +1,21 @@
+# AWS sensitive files
+.aws/
+awscliv2.zip
+
+# Python + cache
+__pycache__/
+*.pyc
+
+# Local model files (optional)
+models/*.joblib
+
+# Virtual environments
+*.venv/
+venv/
+.env
+data/*.csv
+
+.aws/
+aws/
+awscliv2.zip
+__pycache__/

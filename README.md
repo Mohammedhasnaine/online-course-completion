@@ -33,7 +33,6 @@ This repository reflects a production-style architecture where the model, traini
 ```markdown
 ## Architecture Diagram
 
-```mermaid
 flowchart TD
 
     A[Dataset (CSV)] --> B[TrainModel Class]

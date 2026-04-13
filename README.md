@@ -290,15 +290,6 @@ The deployment included:
 - Setting health check endpoint to `/health`  
 - Testing the publicly accessible API via the ALB DNS name  
 
-### Deployment Screenshots
-
-Upload your deployment images to:
-
-docs/images/
-
-Then reference them in the README:
-
-Once images are uploaded, they will be displayed automatically in this section.
 
 ## Running Unit Tests
 

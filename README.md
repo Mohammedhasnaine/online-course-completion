@@ -390,7 +390,7 @@ to improve observability in production.
 These improvements can evolve the project into a full-scale production-ready ML platform.
 
 
-## Display Screenshots in README
+## Display Screenshots
 
 ### Deployment Screenshots
 
@@ -409,7 +409,6 @@ These improvements can evolve the project into a full-scale production-ready ML 
 #### ALB Health Check Endpoint
 ![ALB Health Check](docs/images/alb-health-check.png)
 
-Once uploaded, your screenshots will automatically appear in the README in the AWS deployment section.
 
 ##  Author
 

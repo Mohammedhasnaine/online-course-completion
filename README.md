@@ -389,37 +389,8 @@ to improve observability in production.
 
 These improvements can evolve the project into a full-scale production-ready ML platform.
 
-## How to Upload Deployment Screenshots
 
-To document your AWS deployment (ECR, ECS, Load Balancer, Tasks), you can upload screenshots and reference them inside this README.
-
-### Step 1: Prepare Your Images
-
-Name your screenshots clearly, for example:
-
-ecs-cluster.png
-ecs-service.png
-ecs-task.png
-alb.png
-
-
-### Step 2: Upload to GitHub
-
-1. Open your GitHub repository in the browser  
-2. Navigate to the folder:
-
-docs/images/
-
-
-3. Click:
-
-Add file → Upload files
-
-
-4. Select your screenshots  
-5. Click **Commit changes**
-
-### Step 3: Display Screenshots in README
+## Display Screenshots in README
 
 ### Deployment Screenshots
 
